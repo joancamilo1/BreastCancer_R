@@ -66,7 +66,7 @@ data$diagnosis <- as.factor(data$diagnosis)
 str(data)
 
 
-# _______________________ Data Cleaning ________________________________
+# _______________________ Data Cleaning ______________________________________________________________________________________________________
 
 # Datos faltantes -----------------
 missing_values = map_int(data, function(x) {
@@ -209,10 +209,10 @@ head(data)
 
 
 
-# Fase 4: Modelados-----------------------------------------------------------------------------------------------------------------------------------------------------------
+# --------- Fase 4: Modelados-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# ____________________________ KNN ______________________________________________________________________________
-
+# ____________________________ KNN ____________________________________________________________________________________________________________________________________________________
+# supervised machine learning algorithm 
 # We have to normalize the quantitative variables to express them in the same range of values. 
 
 # Normalization 
@@ -317,6 +317,214 @@ abline(h=max(accuracy), col="grey", lty=2)
 # Add line for min accuracy seen 
 abline(h=min(accuracy), col="grey", lty=2)
 
+# ____________________________ K-means ____________________________________________________________________________________________________________________________________________________
+
+# unsupervised machine learning algorithm
+
+# Execution of k-means with k=3--------------------------------
+
+# usage
+# kmeans(x, centers, iter.max = 10, nstart = 1,
+#        algorithm = c("Hartigan-Wong", "Lloyd", "Forgy",
+#                      "MacQueen"), trace=FALSE)
+
+cancer_kmeans_k3 <- kmeans(dataNorm[,3:23], centers=3)
+
+
+# Cluster to which each point is allocated
+cancer_kmeans_k3$cluster # Podemos observar en qué cluster clasificó a cada diagnostico
+
+# Cluster centers
+cancer_kmeans_k3$centers  # coordenadas de los 2 centroides para las 13 dimensiones
+
+# Cluster size
+cancer_kmeans_k3$size # me indica el número de registros que quedaron en cada cluster
+
+
+#Además, la función kmeans() devuelve algunas proporciones que nos permiten saber qué tan compacto es un clúster
+# y cuán diferentes son varios grupos entre sí.
+
+# (ENTRE)betweenss: La suma de cuadrados entre grupos. En una segmentación óptima, se espera que esta relación sea tan
+#  ALTO POSIBLE, ya que nos gustaría tener grupos heterogéneos.
+
+# (INTRA) withinss: Vector de suma de cuadrados dentro de un grupo, un componente por grupo. En una segmentación óptima,
+# se espera que esta relación sea LO MAS BAJA POSIBLE para cada grupo, ya que nos gustaría tener homogeneidad
+# dentro de los grupos.
+
+# tot.withinss: suma total de cuadrados dentro del grupo.
+
+# totss: La suma total de cuadrados.
+
+
+# Between-cluster sum of squares
+cancer_kmeans_k3$betweenss  # (ENTRE) lo más alejados posibles, para que sean muy heterogeneos
+
+# Within-cluster sum of squares
+cancer_kmeans_k3$withinss  # (INTRA) lo más pequeña posible, que sean muy homogeneos
+
+# Total within-cluster sum of squares 
+cancer_kmeans_k3$tot.withinss  ## es la suma de cuadrados dentro del conglomerado. Entonces da como resultado un vector con un número para cada grupo. 
+##Se espera que esta relación sea lo más baja posible para cada conglomerado, 
+##ya que nos gustaría tener homogeneidad dentro de los conglomerados.
+
+# Total sum of squares
+cancer_kmeans_k3$totss
+
+
+# ----------------------------------------- How many clusters?  ------------------------------------------------
+
+library(gridExtra)  # Librería para realizar gráficos
+library(GGally)     # graficar en forma de matriz un set de datos con múltiples variables, 
+##el resultado es una correlación de las variables elegidas en dicho dataset.
+library(knitr)      # Esta librería se usa para documentos escritos en R markdown, combina textos y análsis hacia otros formatos
+# To study graphically which value of `k` gives us the best partition, we can plot `betweenss` and `tot.withinss` 
+# vs Choice of `k`. 
+
+bss <- numeric()
+wss <- numeric()
+
+# Run the algorithm for different values of k 
+set.seed(1234)
+
+for(i in 1:10){
+  
+  # For each k, calculate betweenss and tot.withinss
+  bss[i] <- kmeans(dataNorm[,3:23], centers=i)$betweenss
+  wss[i] <- kmeans(dataNorm[,3:23], centers=i)$tot.withinss
+  
+}
+# (ENTRE)
+# Between-cluster sum of squares vs Choice of k
+p3 <- qplot(1:10, bss, geom=c("point", "line"), 
+            xlab="Number of clusters", ylab="Between-cluster sum of squares") +
+  scale_x_continuous(breaks=seq(0, 10, 1)) +
+  theme_bw()
+
+# (INTRA)
+# Total within-cluster sum of squares vs Choice of k
+p4 <- qplot(1:10, wss, geom=c("point", "line"),
+            xlab="Number of clusters", ylab="Total within-cluster sum of squares") +
+  scale_x_continuous(breaks=seq(0, 10, 1)) +
+  theme_bw()
+
+# Subplot
+grid.arrange(p3, p4, ncol=2)
+
+# Gráficamente se puede observar que las mayores diatncias se dan en los 3 primeros puntos en ambos gráficos, 
+# esto nos indica que el número óptimo de cluster deberían ser 3
+
+#  PERO debido a que solo tenemos 2 tipos de diagnostico, seleccionaremos k = 2
+
+
+# Results
+
+# Execution of k-means with k=2  ------------------------------------------------------------------
+set.seed(1234)
+
+cancer_kmeans_k2 <- kmeans(dataNorm[,3:23], centers=2)
+
+# Mean values of each cluster
+aggregate(data[,3:23], by=list(cancer_kmeans_k2$cluster), mean)
+
+# ------------------- VISUALIZACION DE CLUSTERS --------------------
+# Clustering 
+# solo se grafican las primeras 6 columnas para facilidad en el entendimiento del grafico
+ggpairs(cbind(data[,3:23], Cluster=as.factor(cancer_kmeans_k2$cluster)),
+        columns=1:6, aes(colour=Cluster, alpha=0.5),
+        lower=list(continuous="points"),
+        upper=list(continuous="blank"),
+        axisLabels="none", switch="both") +
+  theme_bw()
+
+
+# ____________________________ Naive Bayes ____________________________________________________________________________________________________________________________________________
+
+library(e1071)    # Funciones misceláneas del Departamento de Estadística para el análisis de clases latentes, transformada de Fourier de tiempo corto, 
+# agrupamiento difuso, máquinas de vectores de soporte, cálculo de la ruta más corta, 
+# agrupamiento en bolsas, clasificador de Bayes ingenuo, k-vecino más cercano generalizado ...
+
+##Estima el modelo de bayes y obtiene las probabilidades relativas por cada una de las 
+#categorías de análisis frente a la variable de supervivencia
+cancer_nb_model = naiveBayes(diagnosis ~., data = trainData)
+cancer_nb_model
+summary(cancer_nb_model)
+
+# Make prediction using the classifier:
+
+# Predecir la probabilidad de supervivencia y las etiquetas:
+cancer_nb_prob_pred = predict(cancer_nb_model, testData, type = 'raw')
+cancer_nb_pred = predict(cancer_nb_model, testData)   # obtiene las clasificaciones que realiza el modelo con el conjunto de prueba
+
+# Uso de la matriz de confusión para evaluar el rendimiento del modelo: ------------------------------------
+confusionMatrix(cancer_nb_pred, testData$diagnosis)
+
+# metricas:
+# Accuracy-exactitud: El modelo clasificó correctamente el 94% de las observaciones tanto en verdaderos positivos, como verdaderos negativos
+# Sensitividad: El 94.6% de los casos positivos fueron correctamente clasificados
+# Especificidad: El modelo clasificó bien el 93% de los verdaderos negativos del total de negativos
+
+
+# ligeramente inferior al modelo de regresión logística. A continuación, 
+# intentemos predecir usando el clasificador de árboles de decisión.
+
+
+# _______________________  Decision Tree Classifier____________________________________________________________________________________________________________________________________________
+
+# Build the decision tree classifier:
+set.seed(1234)
+cancer_dt_model = rpart(diagnosis ~ ., data = trainData)
+rpart.plot(cancer_dt_model, type = 2, fallen.leaves = F, cex = 1, extra = 2)
+
+# Make predictions based on the classifier:
+
+cancer_dt_pred = predict(cancer_dt_model, newdata = testData, type = "class")
+confusionMatrix(cancer_dt_pred, testData$diagnosis)
+
+
+# The decision tree classifier gives an accuracy rate of 94%
+############################ falta modificar, *no se porque no usa todas las columnas en el arbol de desicion*########################
+
+# _______________________  Random Forest ____________________________________________________________________________________________________________________________________________
+library(randomForest)
+#Baseline Random Forest Model
+cancerRF<-randomForest(diagnosis~.,dataNorm,ntree=150)
+cancerRF
+
+# La precisión general de nuestro modelo es bastante buena, alrededor del 96.3 % en general ya que la tasa de error es del 3.7% 
+
+# ---------------------- calculo de la importancia de cada una de las variables ---------------------------------
+
+### Se observa cuál o cuales son las variables más importantes para la clasificación de los diagnosticos como benignos o malignos
+
+# Get importance
+
+##Obtiene la variable importancia de la clasificación
+importance    <- importance(cancerRF)
+
+## La pasa de una lista a un data frame para poder ordenarla en un granking
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+##realiza el gráfico para ver cuáles son las variables más importantes en la clasificación
+# Use ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                           y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+            hjust=0, vjust=0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_classic()
+
+##Se puede observar que los resultados de la clasificación son congruentes con los de los análisis exploratorios
+
+
+
+
 
 # Fase 5: Evaluación de mejores modelos (métricas)----------------------------------------------------------------------------------------------------------------------------
 
@@ -327,8 +535,10 @@ abline(h=min(accuracy), col="grey", lty=2)
 
 
 
-
-
-
+---------------------------------------------
+# so far ...
+# ya esta la evaluacion de knn
+# ya esta la evaluacion de naives bayes
+----------------------------------------------
 
 
