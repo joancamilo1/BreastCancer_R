@@ -211,6 +211,112 @@ head(data)
 
 # Fase 4: Modelados-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# ____________________________ KNN ______________________________________________________________________________
+
+# We have to normalize the quantitative variables to express them in the same range of values. 
+
+# Normalization 
+dataNorm <- data
+dataNorm[,3:23] <- scale(data[,3:23])
+
+# 70% train and 30% test
+set.seed(5678)
+ind <- sample(2, nrow(dataNorm), replace=TRUE, prob=c(0.7, 0.3))
+trainData <- dataNorm[ind==1,]
+testData <- dataNorm[ind==2,]
+
+# usage------------------------
+# knn(train, test, 
+#     cl, k = 1, l = 0, prob = FALSE, use.all = TRUE)
+
+library(class)      # Incluye funciones de clasificación incluído el de knn
+
+# Execution of k-NN with k=1
+KnnTestPrediction_k1 <- knn(trainData[,3:23], testData[,3:23],
+                            trainData$diagnosis, k=1, prob=TRUE)
+
+# Execution of k-NN with k=2
+KnnTestPrediction_k2 <- knn(trainData[,3:23], testData[,3:23],
+                            trainData$diagnosis, k=2, prob=TRUE)
+
+# Execution of k-NN with k=3
+KnnTestPrediction_k3 <- knn(trainData[,3:23], testData[,3:23],
+                            trainData$diagnosis, k=3, prob=TRUE)
+
+# Execution of k-NN with k=4
+KnnTestPrediction_k4 <- knn(trainData[,3:23], testData[,3:23],
+                            trainData$diagnosis, k=4, prob=TRUE)
+
+# ----------------------------- Evaluation ------------------------------------------------------------------------------------------
+#  matriz de confusion y accuracy
+
+# Confusion matrix of KnnTestPrediction_k1 ----------
+table(testData$diagnosis, KnnTestPrediction_k1)
+# accuracy 
+sum(KnnTestPrediction_k1==testData$diagnosis)/length(testData$diagnosis)*100
+
+
+# Confusion matrix of KnnTestPrediction_k2 --------------
+table(testData$diagnosis, KnnTestPrediction_k2)
+# accuracy
+sum(KnnTestPrediction_k2==testData$diagnosis)/length(testData$diagnosis)*100
+
+
+# Confusion matrix of KnnTestPrediction_k3 ---------------
+table(testData$diagnosis, KnnTestPrediction_k3)
+# accuracy
+sum(KnnTestPrediction_k3==testData$diagnosis)/length(testData$diagnosis)*100
+
+
+# Confusion matrix of KnnTestPrediction_k4--------------
+table(testData$diagnosis, KnnTestPrediction_k4)
+# accuracy
+sum(KnnTestPrediction_k4==testData$diagnosis)/length(testData$diagnosis)*100
+
+
+#  Luego de realizar los 4 modelos se puede observar que para k = 3
+#  tiene mejor accuracy
+
+
+#  esta parte se puede quitar, es solo para comrpobar los k que dan mayor accuracy
+# --------------------------- we can plot Accuracy vs Choice of `k`. -------------------------------------------------------------------
+
+#### Se procede a analizar cuáles son los mejores valores que K debería tomar, para ello realiza un ciclo donde K va tomar valores entre 1 y 100
+###y va realizar la predicción con el modelo de entrenamiento luego se evalua la exactitud de la predicción con el modelo de prueba. En este caso
+### se puede observar que los valores optimos de K se encuentran en un intervalo entre 4 y 24
+
+# Empty variables
+KnnTestPrediction <- list()
+accuracy <- numeric()
+
+library(GGally)     # Este paquete está diseñado para poder graficar en forma de matriz un set de datos con múltiples variables, 
+# el resultado es una correlación de las variables elegidas en dicho dataset.
+
+# From k=1 to k=100...
+for(k in 1:100){
+  
+  # KnnTestPrediction for each k
+  KnnTestPrediction[[k]] <- knn(trainData[,3:23], testData[,3:23], trainData$diagnosis, k, prob=TRUE)
+  
+  # Accuracy for each k   
+  accuracy[k] <- sum(KnnTestPrediction[[k]]==testData$diagnosis)/length(testData$diagnosis)*100
+  
+}
+
+# Accuracy vs Choice of k
+plot(accuracy, type="b", col="dodgerblue", cex=1, pch=20,
+     xlab="k, number of neighbors", ylab="Classification accuracy", 
+     main="Accuracy vs Neighbors")
+
+# Add lines indicating k with best accuracy
+abline(v=which(accuracy==max(accuracy)), col="darkorange", lwd=1.5)
+
+# Add line for max accuracy seen
+abline(h=max(accuracy), col="grey", lty=2)
+
+# Add line for min accuracy seen 
+abline(h=min(accuracy), col="grey", lty=2)
+
 
 # Fase 5: Evaluación de mejores modelos (métricas)----------------------------------------------------------------------------------------------------------------------------
 
