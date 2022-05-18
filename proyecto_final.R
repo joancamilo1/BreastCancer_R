@@ -489,7 +489,6 @@ library(randomForest)
 #Baseline Random Forest Model
 cancerRF<-randomForest(diagnosis~.,dataNorm,ntree=150)
 cancerRF
-
 # La precisión general de nuestro modelo es bastante buena, alrededor del 96.3 % en general ya que la tasa de error es del 3.7% 
 
 # ---------------------- calculo de la importancia de cada una de las variables ---------------------------------
@@ -522,7 +521,10 @@ ggplot(rankImportance, aes(x = reorder(Variables, Importance),
 
 ##Se puede observar que los resultados de la clasificación son congruentes con los de los análisis exploratorios
 
-
+# Hacer predicciones -----------------
+cancer_rf_pred = predict(cancerRF, newdata = testData, type = "class")
+# Matriz de confusión
+confusionMatrix(cancer_rf_pred, testData$diagnosis)
 
 
 
