@@ -196,9 +196,10 @@ dev.off()
 borrar <- c("smoothness_mean","concavity_mean","concave points_mean",
             "compactness_mean","concavity_worst","concave points_worst", 
             "perimeter_se", "concave points_se", "compactness_se")
-data_1 <- data[ , !(names(data) %in% borrar)]
-ncol(data_1)
-head(data_1)
+data <- data[ , !(names(data) %in% borrar)]
+ncol(data)
+head(data)
+
 
 # análisis de componentes principales --------------------------
 
