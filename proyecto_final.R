@@ -61,11 +61,6 @@ data %>%
 
 # Fase 3: Preparación de los datos.------------------------------------------------------------------------------------------------------------------------------------------
 
-# el diagnóstico es la variable dependiente, por lo que debe clasificarse/factorizarse
-data$diagnosis <- as.factor(data$diagnosis)
-str(data)
-
-
 # _______________________ Data Cleaning ______________________________________________________________________________________________________
 
 # Datos faltantes -----------------
@@ -97,6 +92,7 @@ print(missing_values)
 
 # Convertimos a factor  ------------------
 # la variable objetivo - el diagnóstico
+# el diagnóstico es la variable dependiente, por lo que debe clasificarse/factorizarse
 table(data$diagnosis)
 
 data$diagnosis<- as.factor(data$diagnosis)
@@ -110,7 +106,7 @@ str(data) # verificamos que se haya efectuado el cambio
 summary(data) # Observamos algunas medidas de tendencia central de los datos
 
 
-# _______________ Análisis exploratorio de los datos _______________________________
+# _______________ Análisis exploratorio de los datos _____________________________________
 
 # primero observamos las frecuencias de nuestra variable dependiente que es el diagnóstico
 
@@ -124,10 +120,11 @@ ggplot(df,mapping = aes(x="",y=porcentaje, fill=categorias))+
   geom_bar(stat = "identity",color="white")
 
 png("Grafico de dona tipo de cancer.png")
+
 ggplot(df,aes(x=2,y=porcentaje, fill=categorias))+
   geom_bar(stat = "identity",
            color="white")+
-  geom_text(aes(label=percent(porcentaje/100)),
+  geom_text(aes(label=round(percent(porcentaje/100),2)),
             position=position_stack(vjust=0.5),color="white",size=6)+
   coord_polar(theta = "y")+
   scale_fill_manual(values=c("steelblue","orange"))+
@@ -139,15 +136,18 @@ dev.off()
 # construimos histogramas  -------------------
 # para ver la distribución de cada una de las variables independientes 
 
+# Para la media
 data_mean <- data[ ,c("diagnosis", "radius_mean", "texture_mean",
                       "perimeter_mean", "area_mean", "smoothness_mean",
                       "compactness_mean", "concavity_mean", "concave points_mean", 
                       "symmetry_mean", "fractal_dimension_mean" )]
 
+# Para el error estandar
 data_se <- data[ ,c("diagnosis", "radius_se", "texture_se","perimeter_se",
                     "area_se", "smoothness_se", "compactness_se", "concavity_se",
                     "concave points_se", "symmetry_se", "fractal_dimension_se" )]
 
+# dato atipico de cada variable
 data_worst <- data[ ,c("diagnosis", "radius_worst", "texture_worst",
                        "perimeter_worst", "area_worst", "smoothness_worst",
                        "compactness_worst", "concavity_worst", "concave points_worst", 
@@ -169,12 +169,35 @@ ggplot(data = melt(data_worst, id.var = "diagnosis"), mapping = aes(x = value)) 
   geom_histogram(bins = 10, aes(fill=diagnosis), alpha=0.5) + facet_wrap(~variable, scales = 'free_x')
 dev.off()
 
-# correlaciones de las variables independientes -----------
+# correlaciones de las variables independientes -----------------
 # Gráifco de corelaciones
 correlaciones<- cor(data[,3:31])
 png("Correlaciones.png")
 corrplot(correlaciones, order = "hclust", tl.cex = 0.7)
 dev.off()
+
+#>Codigo de salgado -------------  Arreglar ----------------
+library("PerformanceAnalytics") #chart.correlation
+library("Hmisc")
+hist.data.frame(data, n.unique=1, mtitl = "Breast Cancer Histogram")
+WDBCdata_mean = cbind(diagnosis=data[,c(1)], data[,c(2:11)])
+WDBCdata_se = cbind(diagnosis=data[,c(1)], data[,c(12:21)])
+WDBCdata_worst = cbind(diagnosis=data[,c(1)], data[,c(22:31)])
+
+#boxplot
+par(cex.axis=0.8) # is for x-axis
+boxplot(WDBCdata_mean, las=2, col=1:length(WDBCdata_mean), main="CÃ¡ncer de mama por valor media", ylim = c(0,550))
+boxplot(WDBCdata_se, las=2, col=1:length(WDBCdata_mean), main="CÃ¡ncer de mama por valor SE", ylim = c(0,90))
+boxplot(WDBCdata_worst, las=2, col=1:length(WDBCdata_mean), main="CÃ¡ncer de mama por valor mayor ", ylim = c(0,150))
+
+#mean
+chart.Correlation(WDBCdata_mean,histogram=FALSE,pch=19)
+# SE
+chart.Correlation(WDBCdata_se,histogram=FALSE,pch=19)
+# Worst
+chart.Correlation(WDBCdata_worst,histogram=FALSE,pch=19)
+
+#>_____________________________________________________________
 
 # En el gráfico podemos observar que algunas de las variables 
 # presentan altos niveles de correlación entre si
@@ -182,7 +205,7 @@ dev.off()
 # Identifiquemos cuales son
 png("tabla_correlaciones_altas.png")
 alta_correlación <- findCorrelation(cor(correlaciones), cutoff = 0.9)
-corrplot(cor(correlaciones[,alta_correlación]),method="number", order = "hclust")
+corrplot(cor(correlaciones[,alta_correlación]), order = "hclust")
 dev.off()
 
 # las siguientes variables presentan un alto grado de correlación entre ellas: 
@@ -201,15 +224,36 @@ ncol(data)
 head(data)
 
 
-# análisis de componentes principales --------------------------
+# ---------------- análisis de componentes principales ----------------------------------------------
+#> se usa para reducir dimensionalidad
+#> cada componente es una combinacion lineal de otras variables
 
 # para ver cuáles son las componentes que presentan la mayor variabilidad 
 # para clasificar el diagbóstico de cancer de mama
 
+componentes_principales <- prcomp(data[, 3:22], center=TRUE, scale=TRUE)
+png("Porporción acumulada de varianza explicada.png")
+plot(componentes_principales, type="l", main='')
+grid(nx = 10, ny = 14)
+title(main = "Porporción acumulada de varianza explicada", sub = NULL, xlab = "Componentes")
+box()
+dev.off()
+
+summary(componentes_principales)
+
+# Ahora vamos a identificar cuáles son las variables que conforman la 
+# componente principal 1, 2, 3 y 4 que explican el 60% de la variabilidad total
+library(factoextra)
+p1 <- fviz_contrib(componentes_principales, choice="var", axes=1, fill="lightgreen", color="grey", top=10)
+p2 <- fviz_contrib(componentes_principales, choice="var", axes=2, fill="skyblue", color="grey", top=10)
+p3 <- fviz_contrib(componentes_principales, choice="var", axes=3, fill="mediumpurple1", color="grey", top=10)
+p4 <- fviz_contrib(componentes_principales, choice="var", axes=4, fill="moccasin", color="grey", top=10)
+library(gridExtra)
+grid.arrange(p1,p2,p3,p4,ncol=2)
 
 
 
-# --------- Fase 4: Modelados-----------------------------------------------------------------------------------------------------------------------------------------------------------
+# ------------- Fase 4: Modelados-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # ____________________________ KNN ____________________________________________________________________________________________________________________________________________________
 # supervised machine learning algorithm 
@@ -472,8 +516,9 @@ confusionMatrix(cancer_nb_pred, testData$diagnosis)
 
 # Build the decision tree classifier:
 set.seed(1234)
-cancer_dt_model = rpart(diagnosis ~ ., data = trainData)
+cancer_dt_model = rpart(diagnosis ~ ., data = trainData,cp= 0)
 rpart.plot(cancer_dt_model, type = 2, fallen.leaves = F, cex = 1, extra = 2)
+
 
 # Make predictions based on the classifier:
 
@@ -482,7 +527,6 @@ confusionMatrix(cancer_dt_pred, testData$diagnosis)
 
 
 # The decision tree classifier gives an accuracy rate of 94%
-############################ falta modificar, *no se porque no usa todas las columnas en el arbol de desicion*########################
 
 # _______________________  Random Forest ____________________________________________________________________________________________________________________________________________
 library(randomForest)
@@ -527,8 +571,136 @@ cancer_rf_pred = predict(cancerRF, newdata = testData, type = "class")
 confusionMatrix(cancer_rf_pred, testData$diagnosis)
 
 
+#>--------------  Regresion logistica ---------------------------------------------------------------------------
+#> ESto es lo que debe modificar salgado SOLO ESTO, NADA MAS, DEJE TODO QUIETO, SOLO MODIFIQUE ESTA MARICADA
+#>  <3
+
+data <- read.csv("data.csv", header = TRUE, sep = ",")
+WDBCdatafull<-data
+#eliminar columnas, eliminar predictores altamente correlacionados
+data<-subset(data, 
+                  select=-c(area_mean,radius_mean,area_worst,compactness_mean,perimeter_worst,
+                            compactness_se,concavity_worst,fractal_dimension_worst))
+
+set.seed(123)
+
+indx<-createDataPartition(data$diagnosis, p=0.7, list=FALSE)
+train_x<-data[indx,-1]
+train_y<-data$diagnosis[indx] 
+
+test_x<-data[-indx,-1]
+test_y<-data$diagnosis[-indx]
+
+"el subconjunto a continuaciÃ³n es con predictores completos, no se puede usar con el
+modelo logÃ­stico, solo se puede usar con el modelo que acepta predictores altamente correlacionados."
+
+
+trainfull_x<-WDBCdatafull[indx,-1]
+trainfull_y<-WDBCdatafull$diagnosis[indx]
+
+testfull_x<-WDBCdatafull[-indx,-1]
+testfull_y<-WDBCdatafull$diagnosis[-indx]
+
+#aplicar la transformaciÃ³n de potencia para el conjunto de datos de prueba y tren
+
+train_x$radius_se<-train_x$radius_se^bc1$lambda
+train_x$perimeter_se<-train_x$perimeter_se^bc2$lambda    
+train_x$area_se<-train_x$area_se^bc3$lambda
+train_x$fractal_dimension_se<-train_x$fractal_dimension_se^bc5$lambda
+
+test_x$radius_se<-test_x$radius_se^bc1$lambda
+test_x$perimeter_se<-test_x$perimeter_se^bc2$lambda    
+test_x$area_se<-test_x$area_se^bc3$lambda
+test_x$fractal_dimension_se<-test_x$fractal_dimension_se^bc5$lambda
+
+#analisis de componentes principales en la matreiz de datos dada y devuelve los resultados como un objeto
+pca_wdbc <- prcomp(train_x[,2:ncol(train_x)],center = TRUE, scale=TRUE)
+pca_wbdc_test<-prcomp(test_x[,2:ncol(test_x)],center = TRUE, scale=TRUE)
+
+plot(pca_wdbc, type='l', main="PCA - Principal Components Analysis Chart", col="red")
+
+#extrae los resultados solo para variables
+pca_wdbc_var <- get_pca_var(pca_wdbc)
+#conjuntos aleatorios a elegir, son las caracteristicas
+res <- kmeans(pca_wdbc_var$coord,centers = 5, nstart=25)
+grp <- as.factor(res$cluster)
+
+
+fviz_pca_var(pca_wdbc, col.var=grp, palette='jco', legend.title='Cluster') 
+
+#Modelo de regresion logistica que tenga todos los predictores con variables correlacionadas
+model_11_logit_full <-glm(trainfull_y ~ . ,family=binomial, trainfull_x)
+summary(model_11_logit_full)
+#Modelo de regresion logistica sin variables correlacionadas
+model_12_logit_corr <-glm(train_y~.,family=binomial,data=train_x)
+summary(model_12_logit_corr)
+#se seleccionaron unos cuantos predictores del modelo 12
+model_13_logit_corr_final <- update(model_12_logit_corr, .~.-symmetry_se-concave.points_worst-texture_se-perimeter_se-radius_se-symmetry_mean-fractal_dimension_mean-concave.points_mean-texture_mean-compactness_worst-symmetry_worst-smoothness_mean-area_se-smoothness_se )
+summary(model_13_logit_corr_final)
+
+#Regresion logistica sobre variables transformadas por PCA, se pierde la ventaja de la interpretabilidad
+model_14_pca <-glm( train_y~.-PC11 -PC6 -PC8 -PC10 -PC5 -PC9 -PC13 -PC14 -PC12 -PC7,family=binomial,data=pca_wdbc$x[,c(1:14)] %>% data.frame())
+summary(model_14_pca)
+
+
+#Convert to 0/1
+conv_13_logit_corr <- ifelse(predict(model_13_logit_corr_final) > 0.5,1,0)
+#conf_13_logit_corr <- confusionMatrix(conv_13_logit_corr, train_y, positive="1")
+conf_13_logit_corr <- confusionMatrix(table(conv_13_logit_corr, train_y), positive = "1")
+
+#Convert to 0/1
+conv_12_logit_corr <- ifelse(predict(model_12_logit_corr) > 0.5,1,0)
+#conf_13_logit_corr <- confusionMatrix(conv_13_logit_corr, train_y, positive="1")
+conf_12_logit_corr <- confusionMatrix(table(conv_12_logit_corr, train_y), positive = "1")
+
+conv_14_pca <- ifelse(predict(model_14_pca) > 0.5,1,0)
+#conf_14_pca <- confusionMatrix(conv_14_pca, train_y, positive="1")
+conf_14_pca <- confusionMatrix(table(conv_14_pca, train_y), positive="1")
+
+
+acc13<-conf_13_logit_corr$overall["Accuracy"]
+acc14<-conf_14_pca$overall["Accuracy"]
+
+auc13<-roc(train_y ~ conv_13_logit_corr, train_x)$auc
+auc14<-roc(train_y ~ conv_14_pca, train_x)$auc
+
+df<-data.frame(accuracy=c(acc13,acc14),auc=c(auc13,auc14))
+row.names(df)<-c("Logistic","Logistic PCA")
+
+kable(round(df,2), caption = "Performance metrics train")    
+
+#Convert to 0/1
+conv_13_logit_t <- ifelse(predict(object=model_13_logit_corr_final, newdata=test_x, type="response") > 0.5,1,0)
+#conf_13_logit_t <- confusionMatrix(conv_13_logit_t, test_y, positive="1")
+conf_13_logit_t <- confusionMatrix(table(conv_13_logit_t, test_y), positive="1")
+
+conv_14_pca_t <- ifelse(predict(model_14_pca, newdata=as.data.frame(pca_wbdc_test$x[,c(1:14)]), type="response") > 0.5,1,0)
+#conf_14_pca_t <- confusionMatrix(conv_14_pca_t, test_y, positive="1")
+conf_14_pca_t <- confusionMatrix(table(conv_14_pca_t, test_y), positive="1")
+
+
+# compute accuracy
+
+acc13_t<-conf_13_logit_t$overall["Accuracy"]
+acc14_t<-conf_14_pca_t$overall["Accuracy"]
+
+# compute AUC
+
+auc13_t<-roc(test_y ~ conv_13_logit_t, test_x)$auc
+auc14_t<-roc(test_y ~ conv_14_pca_t, test_x)$auc
+
+df<-data.frame(accuracy=c(acc13_t,acc14_t),auc=c(auc13_t,auc14_t))
+row.names(df)<-c("Logistic","Logistic PCA")
+
+kable(round(df,3), caption = "Performance metrics test") 
+
+
+
 
 # Fase 5: Evaluación de mejores modelos (métricas)----------------------------------------------------------------------------------------------------------------------------
+
+
+
 
 # Fase 6: Despliegue (Valor obtenido para el negocio)--------------------------------------------------------------------------------------------------------------------------
 
