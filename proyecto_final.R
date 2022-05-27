@@ -24,6 +24,7 @@ setwd(mypath)
 
 # Fase 1: Entendimiento del negocio-problema asociado a los datos .--------------------------------------------------------------------------------
 
+    # Ir a:  https://docs.google.com/document/d/1XLMYtpleCPQxuIe4c_8CxwYENd_s_JDdr4z95NNUmlE/edit?usp=sharing
 
 
 # Fase 2: Entendimiento de los datos.---------------------------------------------------------------------------------------------------------------------
@@ -103,7 +104,7 @@ data<- data %>%
   mutate_if(is.character,as.numeric)
 
 str(data) # verificamos que se haya efectuado el cambio
-summary(data) # Observamos algunas medidas de tendencia central de los datos
+summary(data[,2:32])# Observamos algunas medidas de tendencia central de los datos
 
 
 # _______________ Análisis exploratorio de los datos _____________________________________
@@ -176,7 +177,7 @@ png("Correlaciones.png")
 corrplot(correlaciones, order = "hclust", tl.cex = 0.7)
 dev.off()
 
-#>Codigo de salgado -------------  Arreglar ----------------
+#>
 library("PerformanceAnalytics") #chart.correlation
 library("Hmisc")
 hist.data.frame(data, n.unique=1, mtitl = "Breast Cancer Histogram")
@@ -186,9 +187,20 @@ WDBCdata_worst = cbind(diagnosis=data[,c(1)], data[,c(22:31)])
 
 #boxplot
 par(cex.axis=0.8) # is for x-axis
-boxplot(WDBCdata_mean, las=2, col=1:length(WDBCdata_mean), main="CÃ¡ncer de mama por valor media", ylim = c(0,550))
-boxplot(WDBCdata_se, las=2, col=1:length(WDBCdata_mean), main="CÃ¡ncer de mama por valor SE", ylim = c(0,90))
-boxplot(WDBCdata_worst, las=2, col=1:length(WDBCdata_mean), main="CÃ¡ncer de mama por valor mayor ", ylim = c(0,150))
+boxplot(WDBCdata_mean, las=2, col=1:length(WDBCdata_mean), main="Cancer de mama por valor media", ylim = c(0,550))
+boxplot(WDBCdata_se, las=2, col=1:length(WDBCdata_mean), main="Cancer de mama por valor SE", ylim = c(0,90))
+boxplot(WDBCdata_worst, las=2, col=1:length(WDBCdata_mean), main="Cancer de mama por valor mayor ", ylim = c(0,150))
+
+
+par(mfrow = c(3, 3) )
+invisible(lapply(3:ncol(WDBCdata_mean), function(i) 
+                boxplot(WDBCdata_mean[, i],las=2,col = rainbow(ncol(WDBCdata_mean)),
+                        xlab =colnames(WDBCdata_mean[i:9])
+                )
+              )
+          )
+
+
 
 #mean
 chart.Correlation(WDBCdata_mean,histogram=FALSE,pch=19)
@@ -252,7 +264,6 @@ library(gridExtra)
 grid.arrange(p1,p2,p3,p4,ncol=2)
 
 
-
 # ------------- Fase 4: Modelados-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # ____________________________ KNN ____________________________________________________________________________________________________________________________________________________
@@ -305,7 +316,7 @@ table(testData$diagnosis, KnnTestPrediction_k2)
 # accuracy
 sum(KnnTestPrediction_k2==testData$diagnosis)/length(testData$diagnosis)*100
 
-
+  
 # Confusion matrix of KnnTestPrediction_k3 ---------------
 table(testData$diagnosis, KnnTestPrediction_k3)
 # accuracy
@@ -422,7 +433,7 @@ library(GGally)     # graficar en forma de matriz un set de datos con múltiples 
 ##el resultado es una correlación de las variables elegidas en dicho dataset.
 library(knitr)      # Esta librería se usa para documentos escritos en R markdown, combina textos y análsis hacia otros formatos
 # To study graphically which value of `k` gives us the best partition, we can plot `betweenss` and `tot.withinss` 
-# vs Choice of `k`. 
+# vs Choice of `k`.
 
 bss <- numeric()
 wss <- numeric()
@@ -481,6 +492,19 @@ ggpairs(cbind(data[,3:23], Cluster=as.factor(cancer_kmeans_k2$cluster)),
   theme_bw()
 
 
+a<-dataNorm %>%
+  as_tibble(dataNorm$diagnosis) %>%   
+  mutate(diagnosis = case_when(
+    diagnosis == 'M' ~ "1",
+    diagnosis == 'B' ~ "2",
+    TRUE ~ "other"))
+
+a<-as.factor(a$diagnosis)
+
+# MATRIS DE CONFUSION 
+table(a,cancer_kmeans_k2$cluster)
+
+
 # ____________________________ Naive Bayes ____________________________________________________________________________________________________________________________________________
 
 library(e1071)    # Funciones misceláneas del Departamento de Estadística para el análisis de clases latentes, transformada de Fourier de tiempo corto, 
@@ -489,7 +513,7 @@ library(e1071)    # Funciones misceláneas del Departamento de Estadística para e
 
 ##Estima el modelo de bayes y obtiene las probabilidades relativas por cada una de las 
 #categorías de análisis frente a la variable de supervivencia
-cancer_nb_model = naiveBayes(diagnosis ~., data = trainData)
+cancer_nb_model = naiveBayes(diagnosis ~., data = trainData[,2:23])
 cancer_nb_model
 summary(cancer_nb_model)
 
@@ -532,7 +556,8 @@ confusionMatrix(cancer_dt_pred, testData$diagnosis)
 library(randomForest)
 #Baseline Random Forest Model
 cancerRF<-randomForest(diagnosis~.,dataNorm,ntree=150)
-cancerRF
+cancerRF #  de aqui se saca el acuraccy ------------------------------------------------ faltaaaaaaaaaaaaaaaaaaaaaa
+
 # La precisión general de nuestro modelo es bastante buena, alrededor del 96.3 % en general ya que la tasa de error es del 3.7% 
 
 # ---------------------- calculo de la importancia de cada una de las variables ---------------------------------
@@ -565,22 +590,29 @@ ggplot(rankImportance, aes(x = reorder(Variables, Importance),
 
 ##Se puede observar que los resultados de la clasificación son congruentes con los de los análisis exploratorios
 
-# Hacer predicciones -----------------
-cancer_rf_pred = predict(cancerRF, newdata = testData, type = "class")
-# Matriz de confusión
-confusionMatrix(cancer_rf_pred, testData$diagnosis)
 
 
-#>--------------  Regresion logistica ---------------------------------------------------------------------------
-#> ESto es lo que debe modificar salgado SOLO ESTO, NADA MAS, DEJE TODO QUIETO, SOLO MODIFIQUE ESTA MARICADA
-#>  <3
+#> _______________________  Regresion logistica _____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+library("sjstats")
+library("pROC")
+library("psych") #describe
+library("kableExtra")
+library("PerformanceAnalytics")
+
 
 data <- read.csv("data.csv", header = TRUE, sep = ",")
+data$X <- NULL
+data$id <- NULL
+data$diagnosis<-ifelse(data$diagnosis == "B", 0, 1)
+bc1<-BoxCoxTrans(data$radius_se)
+bc2<-BoxCoxTrans(data$perimeter_se)
+bc3<-BoxCoxTrans(data$area_se )
+bc5<-BoxCoxTrans(data$fractal_dimension_se)
 WDBCdatafull<-data
 #eliminar columnas, eliminar predictores altamente correlacionados
 data<-subset(data, 
-                  select=-c(area_mean,radius_mean,area_worst,compactness_mean,perimeter_worst,
-                            compactness_se,concavity_worst,fractal_dimension_worst))
+             select=-c(area_mean,radius_mean,area_worst,compactness_mean,perimeter_worst,
+                       compactness_se,concavity_worst,fractal_dimension_worst))
 
 set.seed(123)
 
@@ -694,25 +726,48 @@ row.names(df)<-c("Logistic","Logistic PCA")
 
 kable(round(df,3), caption = "Performance metrics test") 
 
+#> Luego de realizar la regresion logistica mediante el uso de todas sus variables
+#> y luego realizarlo usando la reduccion de dimensionalidad por pca, se puede
+#> observar que hay una mayor presicion cuando se realiza el modelo con todas sus variables 
 
 
-
-# Fase 5: Evaluación de mejores modelos (métricas)----------------------------------------------------------------------------------------------------------------------------
-
-
+#> La Fase 5: Evaluación de mejores modelos (métricas) se realiza 
+#> a medida que se entrena cada uno de los modelos----------------------------------------------------------------------------------------------------------------------------
 
 
 # Fase 6: Despliegue (Valor obtenido para el negocio)--------------------------------------------------------------------------------------------------------------------------
 
+#> El análisis exploratorio generalmente resulta fundamental para poder hacerse
+#>  una idea de cuáles son aquellas variables que podrían tener un mayor poder 
+#>  predictivo para clasificar el diagnóstico como bueno o malo, sin embargo, 
+#>  en este trabajo se pudo observar que de las 30 variables son pocas las que 
+#>  muestran una distribución diferente cuando se analiza por tipo de diagnóstico,
+#>  lo que dificulta entender de forma más precisa cuáles son esos atributos
+#>  que son determinantes para clasificar un diagnóstico como bueno o malo. 
+#>    
+#>  A pesar de ello, se puede observar a lo largo de todo el análisis que aquellas
+#>  relacionadas con el radio, el área y el perímetro son las que más influyen para hacer la clasificación. 
 
 
 
+#> La métrica que se empleó como factor de decisión para definir el mejor modelo
+#>  fue la exactitud ya que en términos generales nos interesa que los algoritmos
+#>  hagan bien las clasificaciones tanto de los verdaderos positivos como
+#>  de los verdaderos negativos. Por un lado, porque resultaría muy grave
+#>  decirle a un paciente que tiene cáncer cuando en realidad no lo tiene,
+#>  esto podría tener repercusiones graves en la salud mental y emocional
+#>  del paciente y su familia. Por otra parte, también sería muy grave
+#>  decirle a un paciente que no tiene cáncer cuando en realidad si lo
+#>  tiene y no brindarle un tratamiento oportuno y adecuado que podría
+#>  concluir en un avance de la patología y ser mortal. 
 
 
----------------------------------------------
-# so far ...
-# ya esta la evaluacion de knn
-# ya esta la evaluacion de naives bayes
-----------------------------------------------
+
+#> En línea con lo anterior, aplicados y evaluados todos los algoritmos de
+#>  aprendizaje automático, el mejor algoritmo es el de regresión logística
+#>  ya que presenta el mayor porcentaje de exactitud, siendo este de 98,8%
+#>  esto quiere decir que clasifica bien tanto los diagnósticos buenos como los malos. 
+
+
 
 
