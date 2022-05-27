@@ -317,6 +317,10 @@ KnnTestPrediction_k1 <- knn(trainData[,3:23], testData[,3:23],
 KnnTestPrediction_k2 <- knn(trainData[,3:23], testData[,3:23],
                             trainData$diagnosis, k=2, prob=TRUE)
 
+# Execution of k-NN with k=2 - cross validation
+KnnTestPrediction_k2 <- knn.cv(trainData[,3:23],
+                            trainData$diagnosis, k=2, prob=TRUE)
+
 # Execution of k-NN with k=3
 KnnTestPrediction_k3 <- knn(trainData[,3:23], testData[,3:23],
                             trainData$diagnosis, k=3, prob=TRUE)
@@ -338,6 +342,12 @@ sum(KnnTestPrediction_k1==testData$diagnosis)/length(testData$diagnosis)*100
 table(testData$diagnosis, KnnTestPrediction_k2)
 # accuracy
 sum(KnnTestPrediction_k2==testData$diagnosis)/length(testData$diagnosis)*100
+
+
+# Confusion matrix of KnnTestPrediction_k2 -------------- cross validation
+table(trainData$diagnosis, KnnTestPrediction_k2)
+# accuracy
+sum(KnnTestPrediction_k2==trainData$diagnosis)/length(trainData$diagnosis)*100
 
   
 # Confusion matrix of KnnTestPrediction_k3 ---------------
