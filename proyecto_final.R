@@ -191,15 +191,38 @@ boxplot(WDBCdata_mean, las=2, col=1:length(WDBCdata_mean), main="Cancer de mama 
 boxplot(WDBCdata_se, las=2, col=1:length(WDBCdata_mean), main="Cancer de mama por valor SE", ylim = c(0,90))
 boxplot(WDBCdata_worst, las=2, col=1:length(WDBCdata_mean), main="Cancer de mama por valor mayor ", ylim = c(0,150))
 
-
-par(mfrow = c(3, 3) )
+############################################
+par(mfrow = c(3, 3))
 invisible(lapply(3:ncol(WDBCdata_mean), function(i) 
-                boxplot(WDBCdata_mean[, i],las=2,col = rainbow(ncol(WDBCdata_mean)),
-                        xlab =colnames(WDBCdata_mean[i:9])
-                )
-              )
-          )
+  boxplot(WDBCdata_mean[, i],las=2,col = colors()[i+10],
+          xlab =colnames(WDBCdata_mean[i]),
+          ylab = "measures", main=paste(colnames(WDBCdata_mean[i]),"vs meas.")
+  )))
+mtext("Breast Cancer Mean Values", side = 3, line = -1.5,
+      font = 2,      # Estilo
+      cex = 1.2, outer = TRUE)
 
+############################################
+par(mfrow = c(3, 3))
+invisible(lapply(3:ncol(WDBCdata_se), function(i) 
+  boxplot(WDBCdata_se[, i],las=2,col = colors()[i+10],
+          xlab =colnames(WDBCdata_se[i]),
+          ylab = "measures", main=paste(colnames(WDBCdata_se[i]),"vs meas.")
+  )))
+mtext("Breast Cancer SE Values", side = 3, line = -1.5,
+      font = 2,      # Estilo
+      cex = 1.2, outer = TRUE)
+
+############################################
+par(mfrow = c(3, 3))
+invisible(lapply(3:ncol(WDBCdata_worst), function(i) 
+  boxplot(WDBCdata_worst[, i],las=2,col = colors()[i+10],
+          xlab =colnames(WDBCdata_worst[i]),
+          ylab = "measures", main=paste(colnames(WDBCdata_worst[i]),"vs meas.")
+  )))
+mtext("Breast Cancer Worst Values", side = 3, line = -1.5,
+      font = 2,      # Estilo
+      cex = 1.2, outer = TRUE)
 
 
 #mean
@@ -328,7 +351,6 @@ table(testData$diagnosis, KnnTestPrediction_k4)
 # accuracy
 sum(KnnTestPrediction_k4==testData$diagnosis)/length(testData$diagnosis)*100
 
-
 #  Luego de realizar los 4 modelos se puede observar que para k = 3
 #  tiene mejor accuracy
 
@@ -371,6 +393,7 @@ abline(h=max(accuracy), col="grey", lty=2)
 
 # Add line for min accuracy seen 
 abline(h=min(accuracy), col="grey", lty=2)
+
 
 # ____________________________ K-means ____________________________________________________________________________________________________________________________________________________
 
